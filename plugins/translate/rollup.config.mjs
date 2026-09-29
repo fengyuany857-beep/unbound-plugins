@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
-
 import json from '@rollup/plugin-json';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import iife from 'rollup-plugin-iife';
@@ -9,88 +8,14 @@ import { swc } from 'rollup-plugin-swc3';
 import { bunPathAliases } from '@unbound-plugins/rollup-path-aliases';
 
 const pluginRoot = fileURLToPath(new URL('.', import.meta.url));
-
 function resolveTranslateModule(source) {
-	const candidate = resolve(pluginRoot, 'src', source.replace(/^@translate\//, ''));
-	const search = [candidate, `${candidate}.ts`, `${candidate}.tsx`, `${candidate}.js`, `${candidate}.mjs`, `${candidate}.json`, resolve(candidate, 'index.ts'), resolve(candidate, 'index.tsx'), resolve(candidate, 'index.js')];
-
-	for (const file of search) {
-		if (existsSync(file)) return file;
-	}
-
-	return null;
+  const candidate = resolve(pluginRoot, 'src', source.replace(/^@translate\//, ''));
+  const search = [candidate, `${candidate}.ts`, `${candidate}.tsx`, `${candidate}.js`, `${candidate}.mjs`, `${candidate}.json`, resolve(candidate, 'index.ts'), resolve(candidate, 'index.tsx'), resolve(candidate, 'index.js')];
+  for (const file of search) if (existsSync(file)) return file;
+  return null;
 }
-
-function translateAlias() {
-	return {
-		name: 'translate-alias',
-		resolveId(source) {
-			if (!source.startsWith('@translate/')) return null;
-			return resolveTranslateModule(source);
-		},
-	};
-}
-
-function hermesExpressionEntrypoint() {
-	return {
-		name: 'hermes-expression-entrypoint',
-		generateBundle(_outputOptions, bundle) {
-			for (const chunk of Object.values(bundle)) {
-				if (chunk.type !== 'chunk') continue;
-				let code = chunk.code.trim();
-				code = code.replace(/^var\s+[A-Za-z_$][\w$]*\s*=\s*/, '');
-				code = code.replace(/;\s*$/, '');
-				chunk.code = `({__plugin:null,__load(){if(this.__plugin)return this.__plugin;this.__plugin=${code};return this.__plugin;},start(){const plugin=this.__load();if(plugin&&typeof plugin.start==='function')return plugin.start();},stop(){const plugin=this.__load();if(plugin&&typeof plugin.stop==='function')return plugin.stop();},getSettingsPanel(){const plugin=this.__load();return plugin&&typeof plugin.getSettingsPanel==='function'?plugin.getSettingsPanel():null;}})`;
-			}
-		},
-	};
-}
-
-function manifestToDist() {
-	return {
-		name: 'manifest-to-dist',
-		buildStart() {
-			const manifest = JSON.parse(readFileSync(resolve(pluginRoot, 'manifest.json'), 'utf8'));
-			manifest.main = manifest.main.replace(/\.(tsx|ts|jsx|mjs)$/, '.js');
-
-			this.emitFile({
-				type: 'asset',
-				fileName: 'manifest.json',
-				source: `${JSON.stringify(manifest, null, '\t')}\n`,
-			});
-		},
-	};
-}
-
-const globals = {
-	'@unbound-app/api': 'window.unbound',
-	'react': 'window.React',
-	'react-native': 'window.ReactNative',
-	'react-native-reanimated': 'window.unbound.metro.common.Reanimated',
-	'@react-native-clipboard/clipboard': 'window.unbound.metro.common.Clipboard',
-	'moment': 'window.unbound.metro.common.Moment',
-};
-
-/** @type {import('rollup').RollupOptions} */
-export default {
-	input: 'src/index.tsx',
-	external: Object.keys(globals),
-	plugins: [
-		bunPathAliases(),
-		translateAlias(),
-		nodeResolve(),
-		json(),
-		swc({ tsconfig: false }),
-		iife(),
-		hermesExpressionEntrypoint(),
-		manifestToDist(),
-	],
-	output: {
-		dir: 'dist',
-		entryFileNames: 'index.js',
-		format: 'es',
-		compact: true,
-		exports: 'named',
-		globals,
-	},
-};
+function translateAlias() { return { name: 'translate-alias', resolveId(source) { if (!source.startsWith('@translate/')) return null; return resolveTranslateModule(source); } }; }
+function hermesExpressionEntrypoint() { return { name: 'hermes-expression-entrypoint', generateBundle(_options, bundle) { for (const chunk of Object.values(bundle)) { if (chunk.type !== 'chunk') continue; let code = chunk.code.trim(); code = code.replace(/^var\s+[A-Za-z_$][\w$]*\s*=\s*/, '').replace(/;\s*$/, ''); chunk.code = `({__plugin:null,__load(){if(this.__plugin)return this.__plugin;this.__plugin=${code};return this.__plugin;},start(context){const plugin=this.__load();if(plugin&&typeof plugin.start==='function')return plugin.start(context);},stop(){const plugin=this.__load();if(plugin&&typeof plugin.stop==='function')return plugin.stop();},getSettingsPanel(){const plugin=this.__load();return plugin&&typeof plugin.getSettingsPanel==='function'?plugin.getSettingsPanel():null;}})`; } } }; }
+function manifestToDist() { return { name: 'manifest-to-dist', buildStart() { const manifest = JSON.parse(readFileSync(resolve(pluginRoot, 'manifest.json'), 'utf8')); manifest.main = manifest.main.replace(/\.(tsx|ts|jsx|mjs)$/, '.js'); this.emitFile({ type: 'asset', fileName: 'manifest.json', source: `${JSON.stringify(manifest, null, '\t')}\n` }); } }; }
+const globals = { '@unbound-app/api': 'window.unbound', 'react': 'window.React', 'react-native': 'window.ReactNative', 'react-native-reanimated': 'window.unbound.metro.common.Reanimated', '@react-native-clipboard/clipboard': 'window.unbound.metro.common.Clipboard', moment: 'window.unbound.metro.common.Moment' };
+export default { input: 'src/index.tsx', external: Object.keys(globals), plugins: [bunPathAliases(), translateAlias(), nodeResolve(), json(), swc({ tsconfig: false }), iife(), hermesExpressionEntrypoint(), manifestToDist()], output: { dir: 'dist', entryFileNames: 'index.js', format: 'es', compact: true, exports: 'named', globals } };
