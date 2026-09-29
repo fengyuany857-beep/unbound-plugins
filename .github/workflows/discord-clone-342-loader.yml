@@ -1,0 +1,89 @@
+name: Build Discord 342 Clone Loader
+
+on:
+  push:
+    branches:
+      - discord-clone-342-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-loader:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout workspace
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Checkout Unbound loader v342.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: unbound-app/loader-ios
+          ref: v342.0
+          path: loader-ios
+          submodules: recursive
+
+      - name: Patch clone browser-login identity
+        working-directory: loader-ios
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("sources/Sideloading.x")
+          text = path.read_text()
+          old = 'com.hammerandchisel.discord'
+          new = 'com.fengyuan.discordclone'
+          count = text.count(old)
+          if count < 2:
+              raise SystemExit(f"expected >=2 browser-login scheme references, got {count}")
+          path.write_text(text.replace(old, new))
+          print(f"patched {count} source references")
+          PY
+          grep -n "com.fengyuan.discordclone" sources/Sideloading.x
+          if grep -q "com.hammerandchisel.discord" sources/Sideloading.x; then
+            echo "old browser-login identity still present in Sideloading.x"
+            exit 1
+          fi
+
+      - name: Mark custom package
+        working-directory: loader-ios
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("control")
+          text = path.read_text()
+          text = text.replace("Version: 2.5.2", "Version: 2.5.2-clone342")
+          path.write_text(text)
+          PY
+
+      - name: Prepare Theos
+        uses: Randomblock1/theos-action@4e23d15886bca77b5f7c462a82567e0de33ebe0b
+
+      - name: Build custom loader without embedded attestation
+        working-directory: loader-ios
+        run: |
+          gmake package DEBUG=1
+          find packages -maxdepth 1 -type f -name '*.deb' -print
+          test -n "$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
+
+      - name: Verify compiled clone scheme
+        working-directory: loader-ios
+        run: |
+          tmp="$(mktemp -d)"
+          deb="$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          dpkg-deb -x "$deb" "$tmp"
+          dylib="$(find "$tmp" -type f -name 'Unbound.dylib' -print -quit)"
+          test -n "$dylib"
+          strings "$dylib" | grep -F "com.fengyuan.discordclone"
+          if strings "$dylib" | grep -Fxq "com.hammerandchisel.discord"; then
+            echo "old callback scheme remains in custom Unbound.dylib"
+            exit 1
+          fi
+
+      - name: Upload custom loader
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: unbound-clone342-loader
+          path: loader-ios/packages/*.deb
+          if-no-files-found: error
