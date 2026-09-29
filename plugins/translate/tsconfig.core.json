@@ -1,7 +1,13 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "skipLibCheck": true
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmit": true
   },
   "include": [
     "src/core/**/*.ts"
