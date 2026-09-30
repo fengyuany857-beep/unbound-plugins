@@ -1,9 +1,9 @@
 {
   "id": "unbound.translate",
   "name": "Translate",
-  "description": "BYOK translation for Discord messages with inline rendering.",
+  "description": "BYOK translation for Discord messages with fail-open inline rendering.",
   "authors": [{ "name": "Unbound Team", "id": "0" }],
-  "version": "2.3.0",
+  "version": "2.3.1",
   "icon": "LanguageIcon",
   "main": "index.tsx"
 }

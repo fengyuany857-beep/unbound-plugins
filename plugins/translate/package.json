@@ -1,7 +1,7 @@
 {
   "name": "translate",
-  "version": "2.3.0",
-  "description": "BYOK Discord translation with inline React rendering.",
+  "version": "2.3.1",
+  "description": "BYOK Discord translation with fail-open inline React rendering.",
   "private": true,
   "type": "module",
   "scripts": {

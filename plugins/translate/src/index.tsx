@@ -11,14 +11,25 @@ export default {
     try {
       controller = new TranslationController(byokTranslationProvider);
       controller.start();
-      startInlineRenderer(controller);
+
+      // Stable interaction path first. Experimental inline rendering must never
+      // prevent the long-press translation menu from being registered.
       startMessageMenu(controller, isInlineRendererInstalled);
-      toasts.showToast({
-        title: 'Translate V2.3',
-        content: 'Inline BYOK translation ready. Copy a DeepSeek API key, then long-press a message.',
-      });
+
+      try {
+        startInlineRenderer(controller);
+      } catch {}
+
+      try {
+        toasts.showToast({
+          title: 'Translate V2.3.1',
+          content: 'BYOK translation ready. Inline rendering is fail-open.',
+        });
+      } catch {}
     } catch (error) {
-      toasts.showToast({ title: 'Translate', content: error instanceof Error ? error.message : String(error) });
+      try {
+        toasts.showToast({ title: 'Translate', content: error instanceof Error ? error.message : String(error) });
+      } catch {}
     }
   },
   stop() {

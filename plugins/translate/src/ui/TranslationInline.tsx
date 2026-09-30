@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { metro } from '@unbound-app/api';
 import type { RawMessage, TranslationController } from '../core/controller';
 import { translationStore } from '../core/translation-store';
@@ -9,10 +8,13 @@ type Props = {
 };
 
 export default function TranslationInline({ controller, message }: Props) {
+  const React = metro.common.React as any;
   const key = controller.getTranslationKeyForMessage(message);
-  const [entry, setEntry] = useState(() => key ? translationStore.getEntry(key) : undefined);
+  const state = React.useState(() => key ? translationStore.getEntry(key) : undefined);
+  const entry = state[0];
+  const setEntry = state[1];
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!key) {
       setEntry(undefined);
       return;
@@ -28,12 +30,12 @@ export default function TranslationInline({ controller, message }: Props) {
   const colors = ((metro.common.Theme as any)?.colors ?? {}) as Record<string, unknown>;
   const muted = typeof colors.TEXT_MUTED === 'string' ? colors.TEXT_MUTED as string : '#b5bac1';
 
-  return (
-    <ReactNative.Text
-      accessibilityLabel={'Translation: ' + current.translatedText}
-      style={{ color: muted, fontSize: 14, lineHeight: 19, opacity: 0.9 }}
-    >
-      {'\n' + current.translatedText}
-    </ReactNative.Text>
+  return React.createElement(
+    ReactNative.Text,
+    {
+      accessibilityLabel: 'Translation: ' + current.translatedText,
+      style: { color: muted, fontSize: 14, lineHeight: 19, opacity: 0.9 },
+    },
+    '\n' + current.translatedText,
   );
 }

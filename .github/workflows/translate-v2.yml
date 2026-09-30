@@ -6,6 +6,7 @@ on:
       - translate-v2
       - translate-v2-byok
       - translate-v2.3-inline
+      - translate-v2.3.1-safe-inline
   workflow_dispatch:
 
 permissions:
