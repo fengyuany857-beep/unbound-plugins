@@ -1,7 +1,7 @@
 {
   "name": "translate",
-  "version": "2.2.0",
-  "description": "BYOK Discord translation using OpenAI-compatible providers.",
+  "version": "2.3.0",
+  "description": "BYOK Discord translation with inline React rendering.",
   "private": true,
   "type": "module",
   "scripts": {

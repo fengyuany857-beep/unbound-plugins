@@ -37,7 +37,13 @@ function showNotice(title: string, content: string): void {
 }
 
 function showError(error: unknown): void {
-  showNotice('Translate Error', error instanceof Error ? error.message : String(error));
+  const content = error instanceof Error ? error.message : String(error);
+  const Alert = metro?.common?.ReactNative?.Alert;
+  if (Alert && typeof Alert.alert === 'function') {
+    Alert.alert('Translate Error', content);
+    return;
+  }
+  showNotice('Translate Error', content);
 }
 
 function closeSheet(host: { hideActionSheet?: (key: string) => void }, key: string | null): void {
@@ -61,11 +67,23 @@ async function configureDeepSeekFromClipboard(): Promise<void> {
 
 function showTranslated(controller: TranslationController, message: RawMessage): void {
   const translated = controller.getTranslationForMessage(message);
-  if (translated) showNotice('DeepSeek Translation', translated);
-  else showError(new Error('Translation finished but no text was available.'));
+  if (!translated) {
+    showError(new Error('Translation finished but no text was available.'));
+    return;
+  }
+
+  const Alert = metro?.common?.ReactNative?.Alert;
+  if (Alert && typeof Alert.alert === 'function') {
+    Alert.alert('DeepSeek Translation', translated);
+    return;
+  }
+  showNotice('DeepSeek Translation', translated);
 }
 
-export function startMessageMenu(controller: TranslationController, inlineAvailable: boolean = false): void {
+export function startMessageMenu(
+  controller: TranslationController,
+  inlineAvailable: () => boolean = () => false,
+): void {
   if (typeof metro?.findByProps !== 'function') return;
   const sheetsHost = metro.findByProps('openLazy', 'hideActionSheet') as { openLazy?: (...args: unknown[]) => unknown; hideActionSheet?: (key: string) => void } | null;
   const ActionSheetRow = (metro.findByProps('ActionSheetRow') as { ActionSheetRow?: any } | null)?.ActionSheetRow;
@@ -109,7 +127,11 @@ export function startMessageMenu(controller: TranslationController, inlineAvaila
           injected.push(addRow('pending', 'Translating with DeepSeek…', () => undefined, true));
         } else if (entry?.state === 'ready' && entry.translatedText) {
           injected.push(addRow('show-result', 'Show Translation', () => showTranslated(controller, message)));
-          injected.push(addRow('retry', 'Re-translate (DeepSeek)', () => void controller.retranslate(message).then(() => showTranslated(controller, message)).catch(showError)));
+          injected.push(addRow('retry', 'Re-translate (DeepSeek)', () => {
+            void controller.retranslate(message)
+              .then(() => { if (!inlineAvailable()) showTranslated(controller, message); })
+              .catch(showError);
+          }));
           injected.push(addRow('copy', 'Copy Translation', () => {
             const common = metro?.common as Record<string, any> | undefined;
             const clipboard = common?.Clipboard ?? common?.clipboard;
@@ -122,7 +144,11 @@ export function startMessageMenu(controller: TranslationController, inlineAvaila
             showNotice('DeepSeek', 'Session API key cleared.');
           }));
         } else {
-          injected.push(addRow('run', 'Translate (DeepSeek)', () => void controller.requestManual(message).then(() => showTranslated(controller, message)).catch(showError)));
+          injected.push(addRow('run', 'Translate (DeepSeek)', () => {
+            void controller.requestManual(message)
+              .then(() => { if (!inlineAvailable()) showTranslated(controller, message); })
+              .catch(showError);
+          }));
           injected.push(addRow('replace-key', 'Replace DeepSeek Key from Clipboard', () => void configureDeepSeekFromClipboard().catch(showError)));
         }
 

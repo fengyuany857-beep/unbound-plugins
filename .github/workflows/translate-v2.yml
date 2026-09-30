@@ -1,10 +1,11 @@
-name: Translate V2 BYOK
+name: Translate V2 Inline
 
 on:
   push:
     branches:
       - translate-v2
       - translate-v2-byok
+      - translate-v2.3-inline
   workflow_dispatch:
 
 permissions:
@@ -28,6 +29,6 @@ jobs:
         run: bun run build
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: translate-v2-byok-dist
+          name: translate-v2.3-inline-dist
           path: plugins/translate/dist
           if-no-files-found: error
