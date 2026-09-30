@@ -1,12 +1,12 @@
 {
   "name": "translate",
-  "version": "2.0.0",
-  "description": "Automatically translate visible messages and show inline translations.",
+  "version": "2.2.0",
+  "description": "BYOK Discord translation using OpenAI-compatible providers.",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "rollup -c",
-    "test": "bun test src/core/message-key.test.ts src/core/translation-cache.test.ts src/core/translation-policy.test.ts src/core/translation-queue.test.ts src/native/surface-layout.test.ts src/native/body-label-resolver.test.ts"
+    "test": "bun test"
   },
   "devDependencies": {
     "@rollup/plugin-json": "^6.1.0",

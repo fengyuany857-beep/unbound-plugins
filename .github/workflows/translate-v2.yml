@@ -1,9 +1,10 @@
-name: Translate V2
+name: Translate V2 BYOK
 
 on:
   push:
     branches:
       - translate-v2
+      - translate-v2-byok
   workflow_dispatch:
 
 permissions:
@@ -27,6 +28,6 @@ jobs:
         run: bun run build
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: translate-v2-dist
+          name: translate-v2-byok-dist
           path: plugins/translate/dist
           if-no-files-found: error

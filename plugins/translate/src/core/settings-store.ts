@@ -9,7 +9,7 @@ export const SETTINGS = storage.getStore(SETTINGS_STORE_ID);
 
 export function getTranslationSettings(): TranslationSettings {
   return {
-    autoTranslateEnabled: SETTINGS.get('autoTranslateEnabled', true),
+    autoTranslateEnabled: SETTINGS.get('autoTranslateEnabled', false),
     sourceLanguage: SETTINGS.get('sourceLanguage', DEFAULT_SOURCE_LANGUAGE),
     targetLanguage: SETTINGS.get('targetLanguage', DEFAULT_TARGET_LANGUAGE),
     translateOwnMessages: SETTINGS.get('translateOwnMessages', false),

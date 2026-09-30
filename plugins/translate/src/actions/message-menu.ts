@@ -1,5 +1,10 @@
 import { assets, metro, patcher, toasts } from '@unbound-app/api';
 import type { TranslationController, RawMessage } from '../core/controller';
+import {
+  byokTranslationProvider,
+  clearTranslationSession,
+  configureDeepSeekSession,
+} from '../provider/openai-compatible';
 
 const Patcher = patcher.createPatcher('unbound.translate');
 const BASE_KEY = 'unbound-translate';
@@ -23,15 +28,44 @@ function findInTree(node: unknown, predicate: (node: TreeNode) => boolean, depth
   return findInTree(element?.props?.children, predicate, depth + 1);
 }
 
+function showNotice(title: string, content: string): void {
+  try { toasts.showToast({ title, content }); }
+  catch {
+    const Alert = metro?.common?.ReactNative?.Alert;
+    if (Alert && typeof Alert.alert === 'function') Alert.alert(title, content);
+  }
+}
+
 function showError(error: unknown): void {
-  toasts.showToast({ title: 'Translate Error', content: error instanceof Error ? error.message : String(error) });
+  showNotice('Translate Error', error instanceof Error ? error.message : String(error));
 }
 
 function closeSheet(host: { hideActionSheet?: (key: string) => void }, key: string | null): void {
   if (key) host.hideActionSheet?.(key);
 }
 
-export function startMessageMenu(controller: TranslationController, inlineAvailable: boolean = true): void {
+async function readClipboardText(): Promise<string> {
+  const common = metro?.common as Record<string, any> | undefined;
+  const clipboard = common?.Clipboard ?? common?.clipboard;
+  if (!clipboard || typeof clipboard.getString !== 'function') throw new Error('Clipboard read API is unavailable.');
+  const value = await Promise.resolve(clipboard.getString());
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+async function configureDeepSeekFromClipboard(): Promise<void> {
+  const apiKey = await readClipboardText();
+  if (apiKey.length < 12) throw new Error('Clipboard does not look like an API key.');
+  configureDeepSeekSession(apiKey);
+  showNotice('DeepSeek', 'Session API key loaded. It will be forgotten when Discord exits.');
+}
+
+function showTranslated(controller: TranslationController, message: RawMessage): void {
+  const translated = controller.getTranslationForMessage(message);
+  if (translated) showNotice('DeepSeek Translation', translated);
+  else showError(new Error('Translation finished but no text was available.'));
+}
+
+export function startMessageMenu(controller: TranslationController, inlineAvailable: boolean = false): void {
   if (typeof metro?.findByProps !== 'function') return;
   const sheetsHost = metro.findByProps('openLazy', 'hideActionSheet') as { openLazy?: (...args: unknown[]) => unknown; hideActionSheet?: (key: string) => void } | null;
   const ActionSheetRow = (metro.findByProps('ActionSheetRow') as { ActionSheetRow?: any } | null)?.ActionSheetRow;
@@ -59,6 +93,7 @@ export function startMessageMenu(controller: TranslationController, inlineAvaila
           const keyValue = (rows[index] as TreeNode)?.key;
           if (typeof keyValue === 'string' && keyValue.startsWith(BASE_KEY)) rows.splice(index, 1);
         }
+
         const iconId = assets.getIDByName('LanguageIcon') ?? assets.Icons?.LanguageIcon;
         const icon = iconId ? metro.common.React.createElement(ActionSheetRow.Icon, { source: iconId }) : undefined;
         const entry = controller.getEntryForMessage(message);
@@ -66,20 +101,31 @@ export function startMessageMenu(controller: TranslationController, inlineAvaila
           key: `${BASE_KEY}-${suffix}`, label, icon, disabled,
           onPress: () => { closeSheet(sheetsHost, currentKey); action(); },
         });
+
         const injected: unknown[] = [];
-        if (entry?.state === 'translating' || entry?.state === 'queued') {
-          injected.push(addRow('pending', 'Translating…', () => undefined, true));
+        if (!byokTranslationProvider.isConfigured()) {
+          injected.push(addRow('set-key', 'Set DeepSeek Key from Clipboard', () => void configureDeepSeekFromClipboard().catch(showError)));
+        } else if (entry?.state === 'translating' || entry?.state === 'queued') {
+          injected.push(addRow('pending', 'Translating with DeepSeek…', () => undefined, true));
         } else if (entry?.state === 'ready' && entry.translatedText) {
-          injected.push(addRow(entry.hidden ? 'show' : 'hide', entry.hidden ? 'Show Translation' : 'Hide Translation', () => entry.hidden ? controller.show(message) : controller.hide(message)));
-          injected.push(addRow('retry', 'Re-translate', () => void controller.retranslate(message).then(() => { if (!inlineAvailable) { const translated = controller.getTranslationForMessage(message); if (translated) toasts.showToast({ title: 'Translated', content: translated }); } }).catch(showError)));
+          injected.push(addRow('show-result', 'Show Translation', () => showTranslated(controller, message)));
+          injected.push(addRow('retry', 'Re-translate (DeepSeek)', () => void controller.retranslate(message).then(() => showTranslated(controller, message)).catch(showError)));
           injected.push(addRow('copy', 'Copy Translation', () => {
-            const clipboard = metro?.common?.Clipboard;
+            const common = metro?.common as Record<string, any> | undefined;
+            const clipboard = common?.Clipboard ?? common?.clipboard;
             if (!clipboard || typeof clipboard.setString !== 'function') { showError(new Error('Clipboard API is unavailable.')); return; }
             void clipboard.setString(entry.translatedText ?? '');
           }));
+          injected.push(addRow('replace-key', 'Replace DeepSeek Key from Clipboard', () => void configureDeepSeekFromClipboard().catch(showError)));
+          injected.push(addRow('clear-key', 'Clear DeepSeek Session Key', () => {
+            clearTranslationSession();
+            showNotice('DeepSeek', 'Session API key cleared.');
+          }));
         } else {
-          injected.push(addRow('run', 'Translate', () => void controller.requestManual(message).then(() => { if (!inlineAvailable) { const translated = controller.getTranslationForMessage(message); if (translated) toasts.showToast({ title: 'Translated', content: translated }); } }).catch(showError)));
+          injected.push(addRow('run', 'Translate (DeepSeek)', () => void controller.requestManual(message).then(() => showTranslated(controller, message)).catch(showError)));
+          injected.push(addRow('replace-key', 'Replace DeepSeek Key from Clipboard', () => void configureDeepSeekFromClipboard().catch(showError)));
         }
+
         rows.splice(1, 0, ...injected);
         return result;
       });

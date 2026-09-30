@@ -1,9 +1,9 @@
 {
   "id": "unbound.translate",
   "name": "Translate",
-  "description": "Automatically translate visible messages and show inline translations.",
+  "description": "BYOK translation for Discord messages. DeepSeek session-key mode.",
   "authors": [{ "name": "Unbound Team", "id": "0" }],
-  "version": "2.0.0",
+  "version": "2.2.0",
   "icon": "LanguageIcon",
   "main": "index.tsx"
 }
