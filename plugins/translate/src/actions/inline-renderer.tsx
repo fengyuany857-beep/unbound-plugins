@@ -59,6 +59,10 @@ function tryInstall(controller: TranslationController, attempt: number): void {
   installed = true;
 }
 
+export function isInlineRendererInstalled(): boolean {
+  return installed;
+}
+
 export function startInlineRenderer(controller: TranslationController): void {
   stopInlineRenderer();
   stopped = false;
