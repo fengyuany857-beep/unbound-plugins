@@ -1,0 +1,25 @@
+name: Fetch Unbound 347 Base
+
+on:
+  push:
+    branches:
+      - discord-clone-347-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified official IPA
+        run: |
+          curl -fL --retry 4 --retry-delay 2             https://github.com/unbound-app/loader-ios/releases/download/v347.0_112799/Unbound.ipa             -o Unbound_347.0_112799.ipa
+          echo "842eb7f3453b4b1ebd92d543c9e3816a332bb75327e74423f03623407fe6554f  Unbound_347.0_112799.ipa" | sha256sum -c -
+      - name: Upload verified base
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: unbound-347-base
+          path: Unbound_347.0_112799.ipa
+          if-no-files-found: error
